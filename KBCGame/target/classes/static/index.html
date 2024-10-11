@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KBC Game</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Global styles */
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #f2f2f2;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            flex-direction: column;
+        }
+
+        h1 {
+            color: #4CAF50;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        /* Container styles */
+        .container {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            padding: 20px;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+        }
+
+        /* Input styles */
+        input[type="text"] {
+            width: calc(100% - 20px);
+            padding: 10px;
+            margin: 10px 0;
+            border: 2px solid #4CAF50;
+            border-radius: 5px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus {
+            border-color: #388E3C;
+        }
+
+        /* Button styles */
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            margin-top: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #388E3C;
+        }
+
+        /* Message styles */
+        #message {
+            margin-top: 20px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        /* QR code styles */
+        #qrCode {
+            margin-top: 20px;
+            border: 2px solid #4CAF50;
+            border-radius: 5px;
+        }
+
+        /* Options styles */
+        #options div {
+            margin: 10px 0;
+            text-align: left;
+        }
+
+        /* Responsive design */
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 24px;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>KBC Game</h1>
+    <div>
+        <label for="playerName">Enter your name:</label>
+        <input type="text" id="playerName" placeholder="Your Name" />
+    </div>
+    <div id="question"></div>
+    <div id="options"></div>
+    <button id="submitAnswer">Submit Answer</button>
+    <div id="message"></div>
+    <div>
+        <h2>Scan QR Code</h2>
+        <img id="qrCode" src="" alt="QR Code" />
+    </div>
+</div>
+
+<script>
+    let currentQuestionIndex = 0;
+
+    function loadQuestion() {
+        $.get(`/game/question/${currentQuestionIndex}`, function (question) {
+            if (question) {
+                $('#question').text(question.questionText);
+                $('#options').empty();
+                question.options.forEach(option => {
+                    $('#options').append(`<div><input type="radio" name="option" value="${option.charAt(0)}"> ${option}</div>`);
+                });
+
+                const qrCodeData = `http://localhost:8080/game/submit?answer=&questionIndex=${currentQuestionIndex}&playerName=YOUR_NAME_HERE`;
+                $('#qrCode').attr('src', `https://api.qrserver.com/v1/create-qr-code/?data=${encodeURIComponent(qrCodeData)}&size=200x200`);
+            } else {
+                $('#message').text("No more questions available!");
+                $('#submitAnswer').prop('disabled', true); // Disable button
+            }
+        });
+    }
+
+    $('#submitAnswer').click(function () {
+        const answer = $('input[name="option"]:checked').val();
+        const playerName = $('#playerName').val();
+
+        if (!answer || playerName.trim() === "") {
+            $('#message').text("Please select an answer and enter your name before submitting.");
+            return;
+        }
+
+        $.post(`/game/submit?answer=${answer}&questionIndex=${currentQuestionIndex}&playerName=${encodeURIComponent(playerName)}`, function (response) {
+            $('#message').text(response);
+            if (response.includes("Congratulations")) {
+                currentQuestionIndex++;
+                loadQuestion();
+            }
+        });
+    });
+
+    $(document).ready(function () {
+        loadQuestion();
+    });
+</script>
+</body>
+</html>
